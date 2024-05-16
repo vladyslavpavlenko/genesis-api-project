@@ -22,6 +22,8 @@ func routes(app *config.AppConfig) http.Handler {
 		MaxAge:           300,
 	}))
 
+	mux.Use(middleware.Heartbeat("/"))
+
 	mux.Get("/rate", handlers.Repo.GetRate)
 	mux.Post("/subscribe", handlers.Repo.Subscribe)
 	mux.Post("/sendEmails", handlers.Repo.SendEmails)

@@ -1,11 +1,13 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
 	"log"
 	"net/http"
 )
+
+const webPort = 8080
 
 var app config.AppConfig
 
@@ -15,13 +17,10 @@ func main() {
 		log.Fatal()
 	}
 
-	addr := flag.String("addr", ":8080", "the api address")
-	flag.Parse()
-
-	log.Printf("Running on port %s", *addr)
+	log.Printf("Running on port %d", webPort)
 
 	srv := &http.Server{
-		Addr:    *addr,
+		Addr:    fmt.Sprintf(":%d", webPort),
 		Handler: routes(&app),
 	}
 
