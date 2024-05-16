@@ -11,7 +11,7 @@ var db *gorm.DB
 
 type User struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	Email     string    `json:"email"`
+	Email     string    `gorm:"unique" json:"email"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/models"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -16,43 +16,40 @@ type jsonResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-// subscriptionBody is the email subscription request body structure.
-type subscriptionBody struct {
-	Email              string `json:"email"`
+type rateResponse struct {
 	BaseCurrencyCode   string `json:"base_currency_code"`
 	TargetCurrencyCode string `json:"target_currency_code"`
+	Price              string `json:"price"`
 }
 
-// Repo the repository used by the handlers
-var Repo *Repository
-
-// Repository is the repository type
-type Repository struct {
-	App *config.AppConfig
-}
-
-// NewRepo creates a new repository
-func NewRepo(a *config.AppConfig) *Repository {
-	return &Repository{
-		App: a,
-	}
-}
-
-// NewTestRepo creates a new test repository
-func NewTestRepo(a *config.AppConfig) *Repository {
-	return &Repository{
-		App: a,
-	}
-}
-
-// NewHandlers sets the repository for handlers
-func NewHandlers(r *Repository) {
-	Repo = r
+// subscriptionBody is the email subscription request body structure.
+type subscriptionBody struct {
+	Email string `json:"email"`
+	// BaseCurrencyCode   string `json:"base_currency_code"`
+	// TargetCurrencyCode string `json:"target_currency_code"`
 }
 
 // GetRate gets the current USD to UAH exchange rate.
 func (m *Repository) GetRate(w http.ResponseWriter, r *http.Request) {
+	rate, err := getRate("USD", "UAH")
+	if err != nil {
+		_ = m.errorJSON(w, errors.New("error calling Coinbase API"), http.StatusServiceUnavailable)
+		return
+	}
 
+	rateResp := rateResponse{
+		BaseCurrencyCode:   "USD",
+		TargetCurrencyCode: "UAH",
+		Price:              rate,
+	}
+
+	// Send response
+	payload := jsonResponse{
+		Error: false,
+		Data:  rateResp,
+	}
+
+	_ = m.writeJSON(w, http.StatusOK, payload)
 }
 
 // Subscribe handles email subscription.
@@ -81,13 +78,19 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	// Add user to the database
 	result := m.App.DB.Create(&user)
 	if result.Error != nil {
+		if strings.Contains(result.Error.Error(), "duplicate") ||
+			strings.Contains(result.Error.Error(), "UNIQUE constraint failed") {
+			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
+			return
+		}
+
 		_ = m.errorJSON(w, fmt.Errorf("error creating user"), http.StatusInternalServerError)
 		return
 	}
 
 	// Get IDs of the currencies by their codes
 	var baseCurrency = models.Currency{
-		Code: body.BaseCurrencyCode,
+		Code: "USD", // body.BaseCurrencyCode,
 	}
 
 	baseCurrencyID, err := m.App.Models.Currency.GetIDbyCode(baseCurrency.Code)
@@ -97,7 +100,7 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targetCurrency = models.Currency{
-		Code: body.TargetCurrencyCode,
+		Code: "UAH", // body.BaseCurrencyCode,
 	}
 
 	targetCurrencyID, err := m.App.Models.Currency.GetIDbyCode(targetCurrency.Code)
@@ -116,6 +119,12 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	// Add subscription to the database
 	result = m.App.DB.Create(&subscription)
 	if result.Error != nil {
+		if strings.Contains(result.Error.Error(), "duplicate") ||
+			strings.Contains(result.Error.Error(), "UNIQUE constraint failed") {
+			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
+			return
+		}
+
 		_ = m.errorJSON(w, fmt.Errorf("error creating subscription"), http.StatusInternalServerError)
 		return
 	}
@@ -126,7 +135,7 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 		Message: "subscribed",
 	}
 
-	_ = m.writeJSON(w, http.StatusAccepted, payload)
+	_ = m.writeJSON(w, http.StatusOK, payload)
 }
 
 // SendEmails handles sending emails to all the subscribed emails.
