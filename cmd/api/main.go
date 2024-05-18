@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/mailer"
 	"log"
 	"net/http"
 )
@@ -17,8 +18,9 @@ func main() {
 		log.Fatal()
 	}
 
-	log.Printf("Running on port %d", webPort)
+	mailer.ScheduleEmails(app.EmailConfig, app.DB)
 
+	log.Printf("Running on port %d", webPort)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", webPort),
 		Handler: routes(&app),

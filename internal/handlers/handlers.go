@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/mailer"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/models"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/rate"
 	"net/http"
 	"strings"
 	"time"
@@ -31,16 +33,16 @@ type subscriptionBody struct {
 
 // GetRate gets the current USD to UAH exchange rate.
 func (m *Repository) GetRate(w http.ResponseWriter, r *http.Request) {
-	rate, err := getRate("USD", "UAH")
+	price, err := rate.GetRate("USD", "UAH")
 	if err != nil {
-		_ = m.errorJSON(w, errors.New("error calling Coinbase API"), http.StatusServiceUnavailable)
+		_ = m.errorJSON(w, errors.New("error calling Coinbase API"), http.StatusBadRequest) // http.StatusServiceUnavailable
 		return
 	}
 
 	rateResp := rateResponse{
 		BaseCurrencyCode:   "USD",
 		TargetCurrencyCode: "UAH",
-		Price:              rate,
+		Price:              price,
 	}
 
 	// Send response
@@ -140,5 +142,5 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 // SendEmails handles sending emails to all the subscribed emails.
 func (m *Repository) SendEmails(w http.ResponseWriter, r *http.Request) {
-
+	mailer.SendEmails(m.App.EmailConfig, m.App.DB)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/handlers"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/models"
@@ -16,7 +17,11 @@ import (
 var counts int64
 
 func setup(app *config.AppConfig) error {
-	// Connect to the database and run migrations
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	db, err := connectToDB()
 	if err != nil {
 		log.Fatal(err)
@@ -29,6 +34,16 @@ func setup(app *config.AppConfig) error {
 
 	app.DB = db
 	app.Models = models.New(db)
+
+	app.EmailConfig = config.EmailConfig{
+		Email:    os.Getenv("GMAIL_EMAIL"),
+		Password: os.Getenv("GMAIL_PASSWORD"),
+	}
+
+	if app.EmailConfig.Email == "" || app.EmailConfig.Password == "" {
+		log.Fatal("Missing email configuration in environment variables")
+	}
+
 	repo := handlers.NewRepo(app)
 	handlers.NewHandlers(repo)
 
