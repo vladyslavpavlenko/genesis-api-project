@@ -17,8 +17,8 @@ type CoinbaseResponse struct {
 }
 
 // GetRate returns the exchange rate between the base currency and the target currency using Coinbase API.
-func GetRate(baseCurrencyCode string, targetCurrencyCode string) (string, error) {
-	url := fmt.Sprintf("https://api.coinbase.com/v2/prices/%s-%s/buy", baseCurrencyCode, targetCurrencyCode)
+func GetRate(baseCode string, targetCode string) (string, error) {
+	url := fmt.Sprintf("https://api.coinbase.com/v2/prices/%s-%s/buy", baseCode, targetCode)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("error making request: %v", err)

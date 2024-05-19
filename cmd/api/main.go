@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
-	"github.com/vladyslavpavlenko/genesis-api-project/internal/mailer"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/handlers"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/scheduler"
 	"log"
 	"net/http"
 )
@@ -18,7 +19,11 @@ func main() {
 		log.Fatal()
 	}
 
-	mailer.ScheduleEmails(app.EmailConfig, app.DB)
+	schedule := "20 17 * * *" // Every day at 10 AM
+	_, err = scheduler.ScheduleTask(schedule, handlers.Repo.NotifySubscribers)
+	if err != nil {
+		log.Fatalf("failed to schedule email task: %v", err)
+	}
 
 	log.Printf("Running on port %d", webPort)
 

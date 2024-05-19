@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/config"
+	"github.com/vladyslavpavlenko/genesis-api-project/internal/email"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/handlers"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/models"
 	"gorm.io/driver/postgres"
@@ -42,7 +43,7 @@ func setup(app *config.AppConfig) error {
 	app.DB = db
 	app.Models = models.New(db)
 
-	app.EmailConfig = config.EmailConfig{
+	app.EmailConfig = email.Config{
 		Email:    os.Getenv("GMAIL_EMAIL"),
 		Password: os.Getenv("GMAIL_PASSWORD"),
 	}

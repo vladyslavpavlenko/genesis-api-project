@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/vladyslavpavlenko/genesis-api-project/internal/mailer"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/rate"
 	"gorm.io/gorm"
 	"net/http"
@@ -15,10 +14,11 @@ type jsonResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-type rateResponse struct {
-	BaseCurrencyCode   string `json:"base_currency_code"`
-	TargetCurrencyCode string `json:"target_currency_code"`
-	Price              string `json:"price"`
+// rateUpdate holds the exchange rate update data.
+type rateUpdate struct {
+	BaseCode   string `json:"base_code"`
+	TargetCode string `json:"target_code"`
+	Price      string `json:"price"`
 }
 
 // subscriptionBody is the email subscription request body structure.
@@ -36,10 +36,10 @@ func (m *Repository) GetRate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rateResp := rateResponse{
-		BaseCurrencyCode:   "USD",
-		TargetCurrencyCode: "UAH",
-		Price:              price,
+	rateResp := rateUpdate{
+		BaseCode:   "USD",
+		TargetCode: "UAH",
+		Price:      price,
 	}
 
 	// Send response
@@ -57,7 +57,7 @@ func (m *Repository) GetRate(w http.ResponseWriter, r *http.Request) {
 func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	var body subscriptionBody
 
-	err := r.ParseForm()
+	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		_ = m.errorJSON(w, errors.New("failed to parse form"))
 		return
@@ -75,7 +75,7 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create and save the user
-	user, err := m.createUser(body.Email)
+	user, err := m.App.Models.User.Create(body.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
@@ -99,7 +99,7 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create and save the subscription
-	err = m.createSubscription(user.ID, baseCurrencyID, targetCurrencyID)
+	_, err = m.App.Models.Subscription.Create(user.ID, baseCurrencyID, targetCurrencyID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
@@ -117,7 +117,7 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	_ = m.writeJSON(w, http.StatusOK, payload)
 }
 
-// SendEmails handles sending emails to all the subscribed emails.
+// SendEmails handles the /sendEmails request.
 func (m *Repository) SendEmails(w http.ResponseWriter, r *http.Request) {
-	mailer.SendEmails(m.App.EmailConfig, m.App.DB)
+	m.NotifySubscribers()
 }
