@@ -56,7 +56,6 @@ This endpoint sends the current `USD to UAH` exchange rate to subscribed email a
 200: Emails were sent.
 ```
 
----
 
 ## Usage
 Clone the repository to your local machine:
@@ -74,8 +73,6 @@ DB_USER=<DB_USER>
 DB_PASSWORD=<DB_PASSWORD>
 DB_NAME=<DB_NAME>
 ```
-
----
 
 ### Makefile
 For Unix-like systems, use the following command to build the application binary:
@@ -95,8 +92,6 @@ To stop the Docker containers, run:
 make down
 ```
 
----
-
 ### Docker Compose
 Alternatively, you can use Docker Compose commands directly:
 
@@ -112,8 +107,6 @@ Stop the containers:
 ```sh
 docker-compose down
 ```
-
----
 
 ### Accessing the Application
 The application will be accessible at [`http://localhost:8080/`](http://localhost:8081/).
