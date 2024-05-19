@@ -22,7 +22,14 @@ func setup(app *config.AppConfig) error {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	db, err := connectToDB()
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable timezone=UTC connect_timeout=5",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"))
+
+	db, err := connectToDB(dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,6 +57,7 @@ func setup(app *config.AppConfig) error {
 	return nil
 }
 
+// openDB initializes a new database connection.
 func openDB(dsn string) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -59,9 +67,8 @@ func openDB(dsn string) (*gorm.DB, error) {
 	return db, nil
 }
 
-func connectToDB() (*gorm.DB, error) {
-	dsn := os.Getenv("DSN")
-
+// connectToDB sets up a GORM database connection.
+func connectToDB(dsn string) (*gorm.DB, error) {
 	for {
 		connection, err := openDB(dsn)
 		if err != nil {

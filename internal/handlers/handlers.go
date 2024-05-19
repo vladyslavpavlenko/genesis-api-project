@@ -1,15 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/mailer"
-	"github.com/vladyslavpavlenko/genesis-api-project/internal/models"
 	"github.com/vladyslavpavlenko/genesis-api-project/internal/rate"
+	"gorm.io/gorm"
 	"net/http"
-	"strings"
-	"time"
 )
 
 type jsonResponse struct {
@@ -54,15 +51,21 @@ func (m *Repository) GetRate(w http.ResponseWriter, r *http.Request) {
 	_ = m.writeJSON(w, http.StatusOK, payload)
 }
 
-// Subscribe handles email subscription.
+// Subscribe handles email subscriptions by adding a new email to the database and creating a corresponding subscription
+// record. By default, it sets up a USD to UAH exchange rate subscription, but the implementation allows for working
+// with any currency, as long as it exists in the `currencies` table.
 func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 	var body subscriptionBody
 
-	// Decode the request body
-	err := json.NewDecoder(r.Body).Decode(&body)
-	defer r.Body.Close()
+	err := r.ParseForm()
 	if err != nil {
-		_ = m.errorJSON(w, errors.New("failed to read body"))
+		_ = m.errorJSON(w, errors.New("failed to parse form"))
+		return
+	}
+
+	body.Email = r.FormValue("email")
+	if body.Email == "" {
+		_ = m.errorJSON(w, errors.New("email is required"))
 		return
 	}
 
@@ -71,67 +74,41 @@ func (m *Repository) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a new user model
-	user := models.User{
-		Email:     body.Email,
-		CreatedAt: time.Now(),
-	}
-
-	// Add user to the database
-	result := m.App.DB.Create(&user)
-	if result.Error != nil {
-		if strings.Contains(result.Error.Error(), "duplicate") ||
-			strings.Contains(result.Error.Error(), "UNIQUE constraint failed") {
+	// Create and save the user
+	user, err := m.createUser(body.Email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
-			return
+		} else {
+			_ = m.errorJSON(w, fmt.Errorf("error creating user"), http.StatusInternalServerError)
 		}
-
-		_ = m.errorJSON(w, fmt.Errorf("error creating user"), http.StatusInternalServerError)
 		return
 	}
 
-	// Get IDs of the currencies by their codes
-	var baseCurrency = models.Currency{
-		Code: "USD", // body.BaseCurrencyCode,
-	}
-
-	baseCurrencyID, err := m.App.Models.Currency.GetIDbyCode(baseCurrency.Code)
+	// Get currency IDs
+	baseCurrencyID, err := m.getCurrencyID("USD")
 	if err != nil {
 		_ = m.errorJSON(w, fmt.Errorf("error retrieving base currency"))
 		return
 	}
 
-	var targetCurrency = models.Currency{
-		Code: "UAH", // body.BaseCurrencyCode,
-	}
-
-	targetCurrencyID, err := m.App.Models.Currency.GetIDbyCode(targetCurrency.Code)
+	targetCurrencyID, err := m.getCurrencyID("UAH")
 	if err != nil {
 		_ = m.errorJSON(w, fmt.Errorf("error retrieving target currency"))
 		return
 	}
 
-	// Create a new subscription model
-	subscription := models.Subscription{
-		UserID:           user.ID,
-		BaseCurrencyID:   baseCurrencyID,
-		TargetCurrencyID: targetCurrencyID,
-	}
-
-	// Add subscription to the database
-	result = m.App.DB.Create(&subscription)
-	if result.Error != nil {
-		if strings.Contains(result.Error.Error(), "duplicate") ||
-			strings.Contains(result.Error.Error(), "UNIQUE constraint failed") {
+	// Create and save the subscription
+	err = m.createSubscription(user.ID, baseCurrencyID, targetCurrencyID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			_ = m.errorJSON(w, fmt.Errorf("already subscribed"), http.StatusConflict)
-			return
+		} else {
+			_ = m.errorJSON(w, fmt.Errorf("error creating subscription"), http.StatusInternalServerError)
 		}
-
-		_ = m.errorJSON(w, fmt.Errorf("error creating subscription"), http.StatusInternalServerError)
 		return
 	}
 
-	// Send response
 	payload := jsonResponse{
 		Error:   false,
 		Message: "subscribed",

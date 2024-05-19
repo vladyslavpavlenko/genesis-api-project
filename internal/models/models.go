@@ -55,6 +55,7 @@ func New(dbPool *gorm.DB) Models {
 	}
 }
 
+// GetIDbyCode returns the ID of the currency by its Code.
 func (c *Currency) GetIDbyCode(code string) (uint, error) {
 	var currency Currency
 	err := db.Where("code = ?", code).First(&currency).Error

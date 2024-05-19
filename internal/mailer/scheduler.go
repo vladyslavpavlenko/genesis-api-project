@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// ScheduleEmails schedules the email sending task to run at 2 PM every day.
+// ScheduleEmails schedules the email sending task to run at 10 AM every day.
 func ScheduleEmails(emailConfig config.EmailConfig, db *gorm.DB) {
 	c := cron.New()
 

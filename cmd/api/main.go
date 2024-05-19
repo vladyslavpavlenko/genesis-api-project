@@ -21,6 +21,7 @@ func main() {
 	mailer.ScheduleEmails(app.EmailConfig, app.DB)
 
 	log.Printf("Running on port %d", webPort)
+
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", webPort),
 		Handler: routes(&app),
