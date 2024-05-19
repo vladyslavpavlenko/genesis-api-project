@@ -19,7 +19,7 @@ func main() {
 		log.Fatal()
 	}
 
-	schedule := "20 17 * * *" // Every day at 10 AM
+	schedule := "0 10 * * *" // Every day at 10 AM
 	_, err = scheduler.ScheduleTask(schedule, handlers.Repo.NotifySubscribers)
 	if err != nil {
 		log.Fatalf("failed to schedule email task: %v", err)
