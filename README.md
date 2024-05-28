@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/vladyslavpavlenko/genesis-api-project)](https://goreportcard.com/report/github.com/vladyslavpavlenko/genesis-api-project)
+
 # Genesis API Project
 
 This service implements an API for subscribing to exchange rate updates via email (the current implementation focuses on the `USD to UAH` exchange rate).
